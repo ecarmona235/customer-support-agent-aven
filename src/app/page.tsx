@@ -1,15 +1,17 @@
-
+import { ChatWindow } from "@/components/ChatWindow";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="flex flex-col items-center justify-center">
-        <h1>Customer Agent</h1>
-        <div className="flex flex-col items-center justify-center">
-          <h2>Here will go the chat option</h2>
+    <div className="min-h-screen bg-gray-900 p-4">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-8 text-white">Customer Agent</h1>
+        
+        <div className="bg-gray-800 rounded-xl shadow-xl h-[600px] overflow-hidden">
+          <ChatWindow />
         </div>
-        <div className="flex flex-col items-center justify-center">
-          <h2>Here will go the call option</h2>
+        
+        <div className="mt-8 text-center">
+          <h2 className="text-xl text-gray-300">Here will go the call option</h2>
         </div>
       </div>
     </div>
