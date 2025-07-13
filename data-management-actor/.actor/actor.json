@@ -1,0 +1,12 @@
+{
+	"actorSpecification": 1,
+	"name": "data-management-actor",
+	"title": "Data Management Actor",
+	"description": "Data Management Actor",
+	"version": "0.0",
+	"buildTag": "latest",
+	"meta": {
+		"templateId": "ts-empty"
+	},
+	"dockerfile": "../Dockerfile"
+}
