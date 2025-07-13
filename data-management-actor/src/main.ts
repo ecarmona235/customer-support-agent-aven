@@ -1,11 +1,38 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { Pinecone } from '@pinecone-database/pinecone';
 import { Actor } from 'apify';
 import { PlaywrightCrawler } from 'crawlee';
 import OpenAI from 'openai';
 
 // The init() call configures the Actor for its environment. It's recommended to start every Actor with an init()
 await Actor.init();
+
+// Initialize Pinecone
+const pinecone = new Pinecone({
+    apiKey: process.env.PINECONE_API_KEY!,
+});
+const index = pinecone.index(process.env.PINECONE_INDEX_NAME || 'customer-service-data');
+
+// Function to store data in Pinecone
+async function storeInPinecone(embedding: number[], textContent: string, url: string) {
+    try {
+        await index.upsert([
+            {
+                id: `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                values: embedding,
+                metadata: {
+                    text: textContent,
+                    url,
+                    timestamp: new Date().toISOString(),
+                },
+            },
+        ]);
+        console.log('Stored in Pinecone:', url);
+    } catch (error) {
+        console.error('Error storing in Pinecone:', error);
+    }
+}
 
 const crawler = new PlaywrightCrawler({
     async requestHandler({ request: _request, page, enqueueLinks, log }) {
@@ -124,8 +151,8 @@ const crawler = new PlaywrightCrawler({
                 console.log('Generated embedding for:', _request.url);
                 console.log('Embedding length:', embedding.length);
 
-                // TODO: Add Pinecone storage here
-                // await storeInPinecone(embedding, textContent, _request.url);
+                // Store in Pinecone
+                await storeInPinecone(embedding, processedText, _request.url);
             } catch (error) {
                 log.error('Error generating embedding:', { error });
             }
