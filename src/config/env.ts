@@ -14,7 +14,8 @@ const validateEnv = () => {
   try {
     logger.info("Validating environment variables");
     const env = {
-      NODE_ENV: process.env.NODE_ENV,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      PINECONE_API_KEY: process.env.PINECONE_API_KEY,
     };
     const parsed = envSchema.parse(env);
     logger.info("Environment variables validated successfully");
