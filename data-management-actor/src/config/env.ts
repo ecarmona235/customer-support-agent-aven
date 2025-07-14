@@ -1,4 +1,6 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
+/* eslint-disable import/no-extraneous-dependencies */
+import 'dotenv/config.js';
+
 import { z } from 'zod';
 
 // Schema for environment variables
@@ -16,7 +18,6 @@ const validateEnv = () => {
             PINECONE_API_KEY: process.env.PINECONE_API_KEY,
             PINECONE_INDEX_NAME: process.env.PINECONE_INDEX_NAME,
         };
-
         const parsed = envSchema.parse(env);
         console.log('✅ Environment variables validated successfully');
         return parsed;
