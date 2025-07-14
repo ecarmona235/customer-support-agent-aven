@@ -1,68 +1,15 @@
-/* eslint-disable import/no-extraneous-dependencies */
-import { OpenAIEmbeddings } from '@langchain/openai';
-import { Pinecone } from '@pinecone-database/pinecone';
 import { Actor } from 'apify';
 import { PlaywrightCrawler } from 'crawlee';
-import OpenAI from 'openai';
 
-import { env } from './config/env.js';
+import { OpenAIService } from './services/openai.service.js';
+import { PineconeService } from './services/pinecone.service.js';
 
 // The init() call configures the Actor for its environment. It's recommended to start every Actor with an init()
 await Actor.init();
 
-// Initialize Pinecone
-const pinecone = new Pinecone({
-    apiKey: env.PINECONE_API_KEY,
-});
-const index = pinecone.index(env.PINECONE_INDEX_NAME);
-
-// Retry logic with exponential backoff
-async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            return await fn();
-        } catch (error: unknown) {
-            const err = error as { status?: number };
-            if (err?.status === 429 && i < maxRetries - 1) {
-                const delay = 2 ** i * 1000; // Exponential backoff
-                console.log(`Rate limited, waiting ${delay}ms before retry ${i + 1}/${maxRetries}`);
-                await new Promise<void>((resolve) => {
-                    setTimeout(resolve, delay);
-                });
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw new Error('Max retries exceeded');
-}
-
-// Function to store data in Pinecone with retry logic
-async function storeInPinecone(embedding: number[], textContent: string, url: string) {
-    const maxRetries = 3;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            await index.upsert([
-                {
-                    id: `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    values: embedding,
-                    metadata: { text: textContent, url, timestamp: new Date().toISOString() },
-                },
-            ]);
-            console.log('✅ Successfully stored in Pinecone:', url);
-            return;
-        } catch (error: unknown) {
-            if (attempt === maxRetries) {
-                console.error('❌ Failed to store in Pinecone after all retries:', { url, error });
-                throw error;
-            }
-            console.warn(`⚠️ Pinecone storage attempt ${attempt} failed, retrying...`, { url, error });
-            await new Promise<void>((resolve) => {
-                setTimeout(resolve, 1000 * attempt);
-            });
-        }
-    }
-}
+// Initialize Services
+const pineconeService = new PineconeService();
+const openaiService = new OpenAIService();
 
 const crawler = new PlaywrightCrawler({
     async requestHandler({ request: _request, page, enqueueLinks, log }) {
@@ -118,7 +65,9 @@ const crawler = new PlaywrightCrawler({
 
         // Enqueue links for further scraping (Apify handles deduplication automatically)
         await enqueueLinks({
-            urls: links.map((link: { url: string | null; text: string }) => link.url),
+            urls: links
+                .map((link: { url: string | null; text: string }) => link.url)
+                .filter((url: string | null): url is string => url !== null),
             label: 'detail',
             // Add domain and URL pattern filtering
             transformRequestFunction: (req) => {
@@ -132,7 +81,7 @@ const crawler = new PlaywrightCrawler({
                     }
 
                     // URL pattern filtering - only crawl specific patterns
-                    const allowedPatterns = ['/about/', '/education/', '/support/', '/about/'];
+                    const allowedPatterns = ['/education/', '/support/', '/about/'];
                     const hasAllowedPattern = allowedPatterns.some((pattern) => req.url.includes(pattern));
 
                     if (!hasAllowedPattern && !req.url.endsWith('/') && !req.url.endsWith('.html')) {
@@ -152,47 +101,14 @@ const crawler = new PlaywrightCrawler({
         // Process text content with OpenAI for embedding
         if (textContent && textContent.length > 0) {
             try {
-                const embeddings = new OpenAIEmbeddings({
-                    openAIApiKey: process.env.OPENAI_API_KEY,
-                    modelName: 'text-embedding-3-small',
-                });
-
-                const openai = new OpenAI({
-                    apiKey: process.env.OPENAI_API_KEY,
-                });
-
-                // Add preprocessing step with retry logic
-                const processedContent = await retryWithBackoff(async () => {
-                    return await openai.chat.completions.create({
-                        model: 'gpt-3.5-turbo',
-                        messages: [
-                            {
-                                role: 'system',
-                                content:
-                                    'Extract and structure the main customer-relevant content. Remove any remaining navigation, ads, or boilerplate. Focus on information that would help answer customer questions.',
-                            },
-                            {
-                                role: 'user',
-                                content: textContent,
-                            },
-                        ],
-                    });
-                });
-
-                // Then embed the processed content with retry logic
-                const processedText = processedContent.choices[0].message.content;
-                if (!processedText) {
-                    throw new Error('No content returned from OpenAI preprocessing');
-                }
-                const embedding = await retryWithBackoff(async () => {
-                    return await embeddings.embedQuery(processedText);
-                });
+                // Process content and generate embeddings
+                const { text: processedText, embedding } = await openaiService.processAndEmbed(textContent);
 
                 console.log('Generated embedding for:', _request.url);
                 console.log('Embedding length:', embedding.length);
 
                 // Store in Pinecone
-                await storeInPinecone(embedding, processedText, _request.url);
+                await pineconeService.storeContent(embedding, processedText, _request.url);
             } catch (error) {
                 log.error('Error processing page', {
                     url: _request.url,
