@@ -2,16 +2,19 @@ import { Actor } from 'apify';
 import { PlaywrightCrawler } from 'crawlee';
 
 import { OpenAIService } from './services/openai.service.js';
-import { PineconeService } from './services/pinecone.service.js';
+import { QdrantService } from './services/qdrant.service.js';
 
 // The init() call configures the Actor for its environment. It's recommended to start every Actor with an init()
 await Actor.init();
 
 // Initialize Services
 console.log('✅ Initializing services...');
-const pineconeService = new PineconeService();
+const qdrantService = new QdrantService();
 const openaiService = new OpenAIService();
 console.log('✅ Services initialized successfully');
+
+// Add collection initialization
+await qdrantService.initializeCollection();
 
 
 const crawler = new PlaywrightCrawler({
@@ -157,27 +160,9 @@ const crawler = new PlaywrightCrawler({
                 console.log('Generated embedding for:', _request.url);
                 console.log('Embedding length:', embedding.length);
 
-                // Store in Pinecone
-                await pineconeService.storeContent(embedding, processedText, _request.url);
-                console.log('🔍 Stored content in Pinecone');
-                console.log('🔍 Processing text content...', processedText.length);
-                
-                // Save to text file instead of Pinecone
-                const fs = await import('fs/promises');
-                const path = await import('path');
-                
-                // Create filename from URL
-                const urlObj = new URL(_request.url);
-                const filename = urlObj.pathname.replace(/\//g, '_') || 'homepage';
-                const filepath = path.join(process.cwd(), 'scraped_content', `${filename}.txt`);
-                
-                // Ensure directory exists
-                await fs.mkdir(path.dirname(filepath), { recursive: true });
-                
-                // Save content to file in URL: text format
-                const content = `URL: ${_request.url}\nTEXT: ${processedText}`;
-                await fs.writeFile(filepath, content, 'utf8');
-                console.log('✅ Content saved to file:', filepath);
+                // Store in Qdrant instead of file
+                await qdrantService.storeContent(embedding, processedText, _request.url);
+                console.log('✅ Content stored in Qdrant:', _request.url);
                 
             } catch (error) {
                 log.error('Error processing page', {
