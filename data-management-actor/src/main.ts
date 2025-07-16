@@ -8,11 +8,24 @@ import { PineconeService } from './services/pinecone.service.js';
 await Actor.init();
 
 // Initialize Services
+console.log('✅ Initializing services...');
 const pineconeService = new PineconeService();
 const openaiService = new OpenAIService();
+console.log('✅ Services initialized successfully');
+
 
 const crawler = new PlaywrightCrawler({
     async requestHandler({ request: _request, page, enqueueLinks, log }) {
+        // Handle the "Continue Here" dialog if it appears
+        try {
+            await page.waitForSelector('text=Yes, Continue Here', { timeout: 5000 });
+            await page.click('text=Yes, Continue Here');
+            console.log('✅ Handled continue dialog');
+        } catch (error) {
+            // Dialog didn't appear, continue normally
+            console.log('ℹ️ No dialog found, continuing...');
+        }
+
         // Add timeout handling for page evaluation
         const pageData = await Promise.race([
             page.evaluate(() => {
@@ -44,13 +57,14 @@ const crawler = new PlaywrightCrawler({
                     .join('\n');
 
                 // Get all links for enqueueing
+                console.log('🔍 Getting all links...');
                 const links = Array.from(document.querySelectorAll('a[href]'))
                     .map((link) => ({
                         url: link.getAttribute('href'),
                         text: link.textContent?.trim() || '',
                     }))
                     .filter((link) => link.url && link.url.length > 0);
-
+                console.log('🔍 Found links:', links);
                 return {
                     textContent,
                     links,
@@ -64,6 +78,7 @@ const crawler = new PlaywrightCrawler({
         const { textContent, links } = pageData;
 
         // Enqueue links for further scraping (Apify handles deduplication automatically)
+
         await enqueueLinks({
             urls: links
                 .map((link: { url: string | null; text: string }) => link.url)
@@ -73,22 +88,26 @@ const crawler = new PlaywrightCrawler({
             transformRequestFunction: (req) => {
                 try {
                     const url = new URL(req.url);
-                    const currentDomain = new URL(req.url).hostname;
+                    const currentDomain = url.hostname;
 
                     // Domain filtering - only crawl same domain
-                    if (currentDomain !== new URL(req.url).hostname) {
+                    if (currentDomain !== 'www.aven.com') {
                         return false; // Don't follow external links
                     }
 
+                    // Allow homepage to be crawled
+                    const isHomepage = req.url === 'https://www.aven.com/' || req.url === 'https://www.aven.com';
+                    
                     // URL pattern filtering - only crawl specific patterns
-                    const allowedPatterns = ['/education/', '/support/', '/about/'];
+                    const allowedPatterns = ['/about', '/education', '/support'];
                     const hasAllowedPattern = allowedPatterns.some((pattern) => req.url.includes(pattern));
 
-                    if (!hasAllowedPattern && !req.url.endsWith('/') && !req.url.endsWith('.html')) {
+                    if (!isHomepage && !hasAllowedPattern) {
                         return false; // Skip non-relevant pages
                     }
 
                     // Normalize URLs to avoid duplicates
+                    console.log('💥 Normalizing URL:', url.href);
                     req.url = url.href;
                     return req;
                 } catch (error) {
@@ -101,14 +120,35 @@ const crawler = new PlaywrightCrawler({
         // Process text content with OpenAI for embedding
         if (textContent && textContent.length > 0) {
             try {
+                console.log('🔍 Processing text content...');
                 // Process content and generate embeddings
-                const { text: processedText, embedding } = await openaiService.processAndEmbed(textContent);
+                // const { text: processedText, embedding } = await openaiService.processAndEmbed(textContent);
+                // console.log('🔍 Generated embedding for:', _request.url);
+                // console.log('Generated embedding for:', _request.url);
+                // console.log('Embedding length:', embedding.length);
 
-                console.log('Generated embedding for:', _request.url);
-                console.log('Embedding length:', embedding.length);
-
-                // Store in Pinecone
-                await pineconeService.storeContent(embedding, processedText, _request.url);
+                // // Store in Pinecone
+                // await pineconeService.storeContent(embedding, processedText, _request.url);
+                // console.log('🔍 Stored content in Pinecone');
+                console.log('🔍 Processing text content...', textContent.length);
+                
+                // Save to text file instead of Pinecone
+                const fs = await import('fs/promises');
+                const path = await import('path');
+                
+                // Create filename from URL
+                const urlObj = new URL(_request.url);
+                const filename = urlObj.pathname.replace(/\//g, '_') || 'homepage';
+                const filepath = path.join(process.cwd(), 'scraped_content', `${filename}.txt`);
+                
+                // Ensure directory exists
+                await fs.mkdir(path.dirname(filepath), { recursive: true });
+                
+                // Save content to file in URL: text format
+                const content = `URL: ${_request.url}\nTEXT: ${textContent}`;
+                await fs.writeFile(filepath, content, 'utf8');
+                console.log('✅ Content saved to file:', filepath);
+                
             } catch (error) {
                 log.error('Error processing page', {
                     url: _request.url,
@@ -117,8 +157,12 @@ const crawler = new PlaywrightCrawler({
                     timestamp: new Date().toISOString(),
                     contentLength: textContent?.length || 0,
                 });
+                console.error('❌ Error processing page:', _request.url);
             }
         }
+        // Close page after processing
+        await page.close();
+        console.log('✅ Page closed');
     },
 });
 
@@ -147,7 +191,7 @@ process.on('SIGTERM', async () => {
     process.exit(0);
 });
 
-await crawler.run();
+await crawler.run(['https://www.aven.com/']);
 
 // Gracefully exit the Actor process. It's recommended to quit all Actors with an exit()
 await Actor.exit();

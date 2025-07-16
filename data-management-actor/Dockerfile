@@ -44,6 +44,14 @@ RUN npm --quiet set progress=false \
     && npm --version \
     && rm -r ~/.npm
 
+# Install system dependencies required for Playwright browsers
+RUN apk add --no-cache \
+    icu \
+    jpeg \
+    libwebp \
+    libffi \
+    && npx playwright install --with-deps
+
 # Copy built JS files from builder image
 COPY --from=builder /usr/src/app/dist ./dist
 

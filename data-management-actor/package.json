@@ -17,7 +17,7 @@
 		"zod": "^3.25.76"
 	},
 	"devDependencies": {
-		"@apify/eslint-config": "^1.0.0",
+		"@apify/eslint-config": "^1.1.0",
 		"@apify/tsconfig": "^0.1.1",
 		"@types/node": "^22.15.32",
 		"eslint": "^9.29.0",
