@@ -152,15 +152,15 @@ const crawler = new PlaywrightCrawler({
             try {
                 console.log('🔍 Processing text content...');
                 // Process content and generate embeddings
-                // const { text: processedText, embedding } = await openaiService.processAndEmbed(textContent);
-                // console.log('🔍 Generated embedding for:', _request.url);
-                // console.log('Generated embedding for:', _request.url);
-                // console.log('Embedding length:', embedding.length);
+                const { text: processedText, embedding } = await openaiService.processAndEmbed(textContent);
+                console.log('🔍 Generated embedding for:', _request.url);
+                console.log('Generated embedding for:', _request.url);
+                console.log('Embedding length:', embedding.length);
 
-                // // Store in Pinecone
-                // await pineconeService.storeContent(embedding, processedText, _request.url);
-                // console.log('🔍 Stored content in Pinecone');
-                console.log('🔍 Processing text content...', textContent.length);
+                // Store in Pinecone
+                await pineconeService.storeContent(embedding, processedText, _request.url);
+                console.log('🔍 Stored content in Pinecone');
+                console.log('🔍 Processing text content...', processedText.length);
                 
                 // Save to text file instead of Pinecone
                 const fs = await import('fs/promises');
@@ -175,7 +175,7 @@ const crawler = new PlaywrightCrawler({
                 await fs.mkdir(path.dirname(filepath), { recursive: true });
                 
                 // Save content to file in URL: text format
-                const content = `URL: ${_request.url}\nTEXT: ${textContent}`;
+                const content = `URL: ${_request.url}\nTEXT: ${processedText}`;
                 await fs.writeFile(filepath, content, 'utf8');
                 console.log('✅ Content saved to file:', filepath);
                 
