@@ -20,18 +20,44 @@ const crawler = new PlaywrightCrawler({
         try {
             await page.waitForSelector('text=Yes, Continue Here', { timeout: 5000 });
             await page.click('text=Yes, Continue Here');
-            console.log('✅ Handled continue dialog');
+            await page.waitForTimeout(2000);
         } catch (error) {
             // Dialog didn't appear, continue normally
             console.log('ℹ️ No dialog found, continuing...');
         }
 
+        // Wait for page to be fully loaded after dialog handling
+        await page.waitForLoadState('networkidle');
+
         // Add timeout handling for page evaluation
         const pageData = await Promise.race([
             page.evaluate(() => {
-                // Get all text content from the page (excluding links)
-                const textElements = document.querySelectorAll(
-                    'h1, h2, h3, h4, h5, h6, p, span, div, li, td, th, strong, em, b, i',
+                // Focus on article content, main sections, or specific content areas
+                const contentSelectors = [
+                    'article',
+                    '.article',
+                    '.post-content',
+                    '.entry-content',
+                    '.content-area',
+                    '.main-content',
+                    '[role="main"]',
+                    '.page-content'
+                ];
+                
+                let rootElement = document.body;
+                
+                // Try to find a specific content container
+                for (const selector of contentSelectors) {
+                    const found = document.querySelector(selector);
+                    if (found) {
+                        rootElement = found as HTMLElement;
+                        break;
+                    }
+                }
+                
+                // Get text content more selectively
+                const textElements = rootElement.querySelectorAll(
+                    'h1, h2, h3, h4, h5, h6, p, blockquote, li:not(nav li), td, th'
                 );
 
                 // Filter out navigation and ads
@@ -51,20 +77,25 @@ const crawler = new PlaywrightCrawler({
                     return true;
                 });
 
-                const textContent = filteredElements
-                    .map((element) => element.textContent?.trim())
-                    .filter((text) => text && text.length > 0)
-                    .join('\n');
+                // Extract text and use Set for deduplication
+                const uniqueTexts = new Set();
+                filteredElements.forEach((element) => {
+                    const text = element.textContent?.trim();
+                    if (text && text.length > 0 && text.length > 10) { // Only keep substantial text
+                        uniqueTexts.add(text);
+                    }
+                });
+
+                const textContent = Array.from(uniqueTexts).join('\n');
 
                 // Get all links for enqueueing
-                console.log('🔍 Getting all links...');
                 const links = Array.from(document.querySelectorAll('a[href]'))
                     .map((link) => ({
                         url: link.getAttribute('href'),
                         text: link.textContent?.trim() || '',
                     }))
                     .filter((link) => link.url && link.url.length > 0);
-                console.log('🔍 Found links:', links);
+
                 return {
                     textContent,
                     links,
@@ -107,7 +138,6 @@ const crawler = new PlaywrightCrawler({
                     }
 
                     // Normalize URLs to avoid duplicates
-                    console.log('💥 Normalizing URL:', url.href);
                     req.url = url.href;
                     return req;
                 } catch (error) {
@@ -157,21 +187,18 @@ const crawler = new PlaywrightCrawler({
                     timestamp: new Date().toISOString(),
                     contentLength: textContent?.length || 0,
                 });
-                console.error('❌ Error processing page:', _request.url);
             }
         }
+        
         // Close page after processing
         await page.close();
-        console.log('✅ Page closed');
     },
 });
 
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
-    console.log('🛑 Received SIGINT, shutting down gracefully...');
     try {
         crawler.stop();
-        console.log('✅ Crawler stopped successfully');
     } catch (error) {
         console.error('❌ Error stopping crawler:', error);
     }
@@ -180,10 +207,8 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
-    console.log('🛑 Received SIGTERM, shutting down gracefully...');
     try {
         crawler.stop();
-        console.log('✅ Crawler stopped successfully');
     } catch (error) {
         console.error('❌ Error stopping crawler:', error);
     }
