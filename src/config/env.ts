@@ -5,8 +5,10 @@ const logger = new Logger("Config:Env");
 
 // Schema for environment variables
 const envSchema = z.object({
-  OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
-  PINECONE_API_KEY: z.string().min(1, "PINECONE_API_KEY is required"),
+  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
+  QDRANT_URL: z.string().min(1, 'QDRANT_URL is required'),
+  QDRANT_COLLECTION_NAME: z.string().min(1, 'QDRANT_COLLECTION_NAME is required'),
+  QDRANT_API_KEY: z.string().min(1, 'QDRANT_API_KEY is required')
 });
 
 // Function to validate environment variables
@@ -15,7 +17,9 @@ const validateEnv = () => {
     logger.info("Validating environment variables");
     const env = {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-      PINECONE_API_KEY: process.env.PINECONE_API_KEY,
+      QDRANT_URL: process.env.QDRANT_URL,
+      QDRANT_COLLECTION_NAME: process.env.QDRANT_COLLECTION_NAME,
+      QDRANT_API_KEY: process.env.QDRANT_API_KEY
     };
     const parsed = envSchema.parse(env);
     logger.info("Environment variables validated successfully");
