@@ -50,7 +50,32 @@ export class OpenAIService {
      */
     async generateEmbedding(text: string): Promise<number[]> {
         return await retryWithBackoff(async () => {
-            return await this.embeddings.embedQuery(text);
+            const result = await this.embeddings.embedQuery(text);
+            
+            // Debug the embedding result
+            console.log(' Embedding debug:', {
+                type: typeof result,
+                isArray: Array.isArray(result),
+                length: Array.isArray(result) ? result.length : 'N/A',
+                firstFew: Array.isArray(result) ? result.slice(0, 5) : result,
+                sampleValues: Array.isArray(result) ? result.slice(0, 3).map(v => ({ value: v, type: typeof v })) : 'N/A'
+            });
+            
+            // Ensure it's a number array
+            if (!Array.isArray(result)) {
+                throw new Error(`Expected array, got ${typeof result}`);
+            }
+            
+            // Ensure all values are numbers
+            const numberArray = result.map(val => {
+                const num = Number(val);
+                if (isNaN(num)) {
+                    throw new Error(`Invalid embedding value: ${val}`);
+                }
+                return num;
+            });
+            
+            return numberArray;
         });
     }
 
