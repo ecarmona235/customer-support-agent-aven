@@ -14,7 +14,7 @@ const openaiService = new OpenAIService();
 console.log('✅ Services initialized successfully');
 
 // Add collection initialization
-await qdrantService.initializeCollection();
+await qdrantService.forceRecreateCollection();
 
 
 const crawler = new PlaywrightCrawler({
