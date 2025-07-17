@@ -8,7 +8,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
   QDRANT_URL: z.string().min(1, 'QDRANT_URL is required'),
   QDRANT_COLLECTION_NAME: z.string().min(1, 'QDRANT_COLLECTION_NAME is required'),
-  QDRANT_API_KEY: z.string().min(1, 'QDRANT_API_KEY is required')
+  QDRANT_API_KEY: z.string().min(1, 'QDRANT_API_KEY is required'),
+  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
 });
 
 // Function to validate environment variables
@@ -19,7 +20,8 @@ const validateEnv = () => {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
       QDRANT_URL: process.env.QDRANT_URL,
       QDRANT_COLLECTION_NAME: process.env.QDRANT_COLLECTION_NAME,
-      QDRANT_API_KEY: process.env.QDRANT_API_KEY
+      QDRANT_API_KEY: process.env.QDRANT_API_KEY,
+      REDIS_URL: process.env.REDIS_URL,
     };
     const parsed = envSchema.parse(env);
     logger.info("Environment variables validated successfully");
