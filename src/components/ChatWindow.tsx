@@ -25,6 +25,7 @@ export function ChatWindow() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [chatEnded, setChatEnded] = useState(false);
 
   // Generate session ID on component mount
   useEffect(() => {
@@ -42,7 +43,12 @@ export function ChatWindow() {
   }, []);
 
   const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !sessionId) return;
+    console.log('handleSendMessage called:', { content, chatEnded, sessionId });
+    
+    if (!content.trim() || !sessionId || chatEnded) {
+      console.log('Early return:', { hasContent: !!content.trim(), hasSessionId: !!sessionId, chatEnded });
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -82,6 +88,21 @@ export function ChatWindow() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Check if the assistant's response ends with "Goodbye" to conclude the chat
+      if (data.message.trim().endsWith('Goodbye!')) {
+        console.log('Goodbye detected! Ending chat...');
+        setChatEnded(true);
+        
+        // Add a final message indicating the chat has ended
+        const endMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          content: 'Chat session ended. Refresh the page to start a new conversation.',
+          sender: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, endMessage]);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -106,6 +127,7 @@ export function ChatWindow() {
         onChange={setInputValue}
         onSend={handleSendMessage}
         disabled={isLoading}
+        chatEnded={chatEnded}
       />
     </div>
   );

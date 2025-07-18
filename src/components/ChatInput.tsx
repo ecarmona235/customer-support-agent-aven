@@ -7,19 +7,29 @@ interface ChatInputProps {
   onChange: (value: string) => void;
   onSend: (message: string) => void;
   disabled?: boolean;
+  chatEnded?: boolean;
 }
 
-export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInputProps) {
+export function ChatInput({ value, onChange, onSend, disabled = false, chatEnded = false }: ChatInputProps) {
+  console.log('ChatInput render:', { disabled, chatEnded, value });
+  
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !disabled) {
+    if (e.key === 'Enter' && !e.shiftKey && !disabled && !chatEnded) {
       e.preventDefault();
       onSend(value);
     }
   };
 
   const handleSend = () => {
-    if (!disabled) {
+    console.log('handleSend called:', { disabled, chatEnded });
+    if (!disabled && !chatEnded) {
       onSend(value);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!chatEnded) {
+      onChange(e.target.value);
     }
   };
 
@@ -29,18 +39,24 @@ export function ChatInput({ value, onChange, onSend, disabled = false }: ChatInp
         <input
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="Type your message..."
-          disabled={disabled}
-          className="flex-1 px-3 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          placeholder={chatEnded ? "Chat ended - refresh page to start new conversation" : "Type your message..."}
+          disabled={disabled || chatEnded}
+          className={`flex-1 px-3 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed ${
+            chatEnded ? 'border-red-500 bg-gray-600' : ''
+          }`}
         />
         <button
           onClick={handleSend}
-          disabled={!value.trim() || disabled}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={disabled || chatEnded}
+          className={`px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+            chatEnded 
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
-          Send
+          {chatEnded ? 'Chat Ended' : 'Send'}
         </button>
       </div>
     </div>
