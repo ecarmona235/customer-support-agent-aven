@@ -23,7 +23,9 @@ const validateEnv = () => {
       QDRANT_API_KEY: process.env.QDRANT_API_KEY,
       REDIS_URL: process.env.REDIS_URL,
     };
+    logger.info("Environment variables", { env });
     const parsed = envSchema.parse(env);
+    
     logger.info("Environment variables validated successfully");
     return parsed;
   } catch (error) {

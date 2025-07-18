@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { OpenAIEmbeddings } from '@langchain/openai';
 import { z } from 'zod';
 import { env } from '@/config/env';
 import { 
@@ -19,10 +18,6 @@ const logger = new Logger("ChatAPI");
 
 // Initialize services
 const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: env.OPENAI_API_KEY,
-  modelName: 'text-embedding-3-small',
-});
 const qdrantClient = new QdrantClient({ 
   url: env.QDRANT_URL,
   apiKey: env.QDRANT_API_KEY 
@@ -92,7 +87,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Generate embedding for user message
     logger.info("Generating embedding for user message", { sessionId });
-    const embedding = await embeddings.embedQuery(message);
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: message,
+    });
+    const embedding = embeddingResponse.data[0].embedding;
 
     // Search Qdrant for relevant context
     logger.info("Searching Qdrant for relevant context", { sessionId });
@@ -120,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const recentMessages = conversationHistory?.messages.slice(-10) || []; // Last 10 messages
 
     // Prepare system prompt with context
-    const systemPrompt = `You are a helpful customer support assistant. Use the following context to answer the user's question accurately and helpfully:
+    const systemPrompt = `You are a helpful customer support assistant for Aven, a Financial Services company. Use the following context to answer the user's question accurately but also conversationally as you are chatting with them:
     
     CONTEXT:
     ${context}
@@ -130,7 +129,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     - Keep responses concise and helpful
     - Focus on providing accurate information based on the context provided
     - If you're unsure about something, acknowledge the limitation
-    - Do not hallucinate or make up information`;
+    - Do not hallucinate or make up information
+    - Be conversational and friendly
+    - If the user seems to want to end the conversation, say its been my pleasure helping you and goodbye`;
 
     // Prepare conversation for OpenAI
     const messages = [
