@@ -4,8 +4,8 @@ const next = require('next');
 const { WebSocketServer } = require('ws');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = process.env.PORT || 3000;
+const hostname = process.env.WS_HOSTNAME || 'localhost';
+const port = process.env.WS_PORT || process.env.PORT || 3000;
 
 // Prepare the Next.js app
 const app = next({ dev, hostname, port });
@@ -13,6 +13,11 @@ const handle = app.getRequestHandler();
 
 // WebSocket connection management
 const connections = new Map();
+
+// WebSocket configuration from environment
+const maxReconnectAttempts = parseInt(process.env.WS_MAX_RECONNECT_ATTEMPTS) || 5;
+const reconnectDelay = parseInt(process.env.WS_RECONNECT_DELAY) || 1000;
+const pingInterval = parseInt(process.env.WS_PING_INTERVAL) || 30000;
 
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
@@ -104,6 +109,11 @@ app.prepare().then(() => {
   server.listen(port, () => {
     console.log(`> Ready on http://${hostname}:${port}`);
     console.log(`> WebSocket server running on ws://${hostname}:${port}/api/voice`);
+    console.log(`> Environment: ${dev ? 'development' : 'production'}`);
+    console.log(`> WebSocket path: /api/voice`);
+    console.log(`> Max reconnect attempts: ${maxReconnectAttempts}`);
+    console.log(`> Reconnect delay: ${reconnectDelay}ms`);
+    console.log(`> Ping interval: ${pingInterval}ms`);
   });
 });
 
