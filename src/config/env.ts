@@ -10,6 +10,9 @@ const envSchema = z.object({
   QDRANT_COLLECTION_NAME: z.string().min(1, 'QDRANT_COLLECTION_NAME is required'),
   QDRANT_API_KEY: z.string().min(1, 'QDRANT_API_KEY is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  ELEVENLABS_API_KEY: z.string().min(1, 'ELEVENLABS_API_KEY is required'),
+  ELEVENLABS_VOICE_ID: z.string().min(1, 'ELEVENLABS_VOICE_ID is required'),
+  GOOGLE_API_KEY: z.string().min(1, 'GOOGLE_API_KEY is required'),
 });
 
 // Function to validate environment variables
@@ -22,6 +25,9 @@ const validateEnv = () => {
       QDRANT_COLLECTION_NAME: process.env.QDRANT_COLLECTION_NAME,
       QDRANT_API_KEY: process.env.QDRANT_API_KEY,
       REDIS_URL: process.env.REDIS_URL,
+      ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+      ELEVENLABS_VOICE_ID: process.env.ELEVENLABS_VOICE_ID,
+      GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
     };
     logger.info("Environment variables", { env });
     const parsed = envSchema.parse(env);
