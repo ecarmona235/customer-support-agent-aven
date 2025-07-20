@@ -3,6 +3,10 @@ const { parse } = require('url');
 const next = require('next');
 const { WebSocketServer } = require('ws');
 
+// Import audio processing services
+const { AudioPipelineService } = require('./src/services/audio-pipeline.service');
+const { AudioUtils } = require('./src/utils/audio.utils');
+
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.WS_HOSTNAME || 'localhost';
 const port = process.env.WS_PORT || process.env.PORT || 3000;
@@ -18,6 +22,26 @@ const connections = new Map();
 const maxReconnectAttempts = parseInt(process.env.WS_MAX_RECONNECT_ATTEMPTS) || 5;
 const reconnectDelay = parseInt(process.env.WS_RECONNECT_DELAY) || 1000;
 const pingInterval = parseInt(process.env.WS_PING_INTERVAL) || 30000;
+
+// Initialize audio pipeline
+let audioPipeline;
+try {
+  const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY;
+  if (!elevenLabsApiKey) {
+    console.warn('ELEVENLABS_API_KEY not found, audio processing will be disabled');
+  } else {
+    audioPipeline = new AudioPipelineService(elevenLabsApiKey, {
+      chunkSizeMs: 100,
+      sampleRate: 16000,
+      channels: 1,
+      enableRealTimeProcessing: true,
+      enableAudioOptimization: true
+    });
+    console.log('Audio pipeline initialized successfully');
+  }
+} catch (error) {
+  console.error('Failed to initialize audio pipeline:', error);
+}
 
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
@@ -101,6 +125,11 @@ app.prepare().then(() => {
     ws.on('close', (code, reason) => {
       console.log(`WebSocket disconnected: ${sessionId} (${code}: ${reason})`);
       connections.delete(sessionId);
+      
+      // Clean up audio pipeline session
+      if (audioPipeline) {
+        audioPipeline.clearSession(sessionId);
+      }
     });
 
     // Handle errors
@@ -119,6 +148,10 @@ app.prepare().then(() => {
     console.log(`> Max reconnect attempts: ${maxReconnectAttempts}`);
     console.log(`> Reconnect delay: ${reconnectDelay}ms`);
     console.log(`> Ping interval: ${pingInterval}ms`);
+    console.log(`> Audio pipeline: ${audioPipeline ? 'ENABLED' : 'DISABLED'}`);
+    if (audioPipeline) {
+      console.log(`> Audio processing: Real-time enabled, Optimization enabled`);
+    }
   });
 });
 
@@ -128,11 +161,48 @@ async function handleAudioData(sessionId, audioData) {
   if (!ws) return;
 
   try {
-    // TODO: Handle audio data
-    ws.send(JSON.stringify({
-      type: 'audio_received',
-      timestamp: Date.now()
-    }));
+    if (!audioPipeline) {
+      console.warn('Audio pipeline not available');
+      ws.send(JSON.stringify({
+        type: 'audio_received',
+        timestamp: Date.now()
+      }));
+      return;
+    }
+
+    // Convert base64 audio data to buffer
+    const audioBuffer = Buffer.from(audioData, 'base64');
+    
+    // Process audio through the pipeline
+    const result = await audioPipeline.processAudioChunk(sessionId, audioBuffer);
+    
+    if (result && result.transcript) {
+      console.log(`Transcription for ${sessionId}: ${result.transcript}`);
+      
+      // Send transcription back to client
+      ws.send(JSON.stringify({
+        type: 'transcription',
+        transcript: result.transcript,
+        confidence: result.confidence,
+        timestamp: Date.now()
+      }));
+
+      // If we have an AI response with audio, send it back
+      if (result.audioResponse) {
+        const audioBase64 = result.audioResponse.toString('base64');
+        ws.send(JSON.stringify({
+          type: 'audio_response',
+          audio: audioBase64,
+          timestamp: Date.now()
+        }));
+      }
+    } else {
+      // Just acknowledge receipt
+      ws.send(JSON.stringify({
+        type: 'audio_received',
+        timestamp: Date.now()
+      }));
+    }
   } catch (error) {
     console.error('Error handling audio data:', error);
     ws.send(JSON.stringify({
