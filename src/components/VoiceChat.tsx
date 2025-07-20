@@ -114,16 +114,19 @@ export default function VoiceChat({ sessionId, onError }: VoiceChatProps) {
       audioChunksRef.current = [];
 
       // Handle audio data
-      mediaRecorder.ondataavailable = (event) => {
+      mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
           
-          // Convert blob to array buffer and send
-          event.data.arrayBuffer().then((buffer) => {
-            if (wsRef.current && isStreaming) {
-              wsRef.current.sendAudioData(buffer);
+          // Send audio blob directly - it will be converted to PCM
+          if (wsRef.current && isStreaming) {
+            try {
+              await wsRef.current.sendAudioData(event.data);
+            } catch (error) {
+              console.error('Error sending audio data:', error);
+              setError('Failed to send audio data');
             }
-          });
+          }
         }
       };
 

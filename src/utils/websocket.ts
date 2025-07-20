@@ -1,3 +1,5 @@
+import { AudioConverter } from './audio-converter';
+
 export interface WebSocketMessage {
   type: string;
   data?: any;
@@ -14,9 +16,15 @@ export class VoiceWebSocket {
   private reconnectDelay = 1000;
   private isConnecting = false;
   private messageHandlers: Map<string, (message: WebSocketMessage) => void> = new Map();
+  private audioConverter: AudioConverter;
 
   constructor(sessionId: string) {
     this.sessionId = sessionId;
+    this.audioConverter = new AudioConverter({
+      targetSampleRate: 16000,
+      targetChannels: 1,
+      targetBitDepth: 16
+    });
   }
 
   connect(): Promise<void> {
@@ -107,12 +115,27 @@ export class VoiceWebSocket {
     }
   }
 
-  sendAudioData(audioData: ArrayBuffer): void {
-    this.send({
-      type: 'audio_data',
-      data: Array.from(new Uint8Array(audioData)),
-      timestamp: Date.now()
-    });
+  async sendAudioData(audioData: Blob | ArrayBuffer): Promise<void> {
+    try {
+      let pcmData: ArrayBuffer;
+
+      if (audioData instanceof Blob) {
+        // Convert blob to PCM
+        pcmData = await this.audioConverter.convertMediaRecorderData(audioData);
+      } else {
+        // Assume it's already PCM data
+        pcmData = audioData;
+      }
+
+      this.send({
+        type: 'audio_data',
+        data: Array.from(new Uint8Array(pcmData)),
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('Error converting audio data:', error);
+      throw new Error(`Failed to convert audio data: ${error}`);
+    }
   }
 
   startStreaming(): void {
@@ -153,6 +176,11 @@ export class VoiceWebSocket {
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
+    }
+    
+    // Clean up audio converter
+    if (this.audioConverter) {
+      this.audioConverter.dispose();
     }
   }
 
