@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { ChatWindow } from "@/components/ChatWindow";
+import VoiceChat from "@/components/VoiceChat";
 
 export default function Home() {
   const [showChat, setShowChat] = useState(false);
+  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
 
   return (
     <div className="min-h-screen bg-gray-900 p-4">
@@ -27,7 +29,13 @@ export default function Home() {
         )}
         
         <div className="mt-8 text-center">
-          <h2 className="text-xl text-gray-300">Here will go the call option</h2>
+          <h2 className="text-xl text-gray-300 mb-4">Voice Chat</h2>
+          <div className="bg-gray-800 rounded-xl shadow-xl p-6 max-w-md mx-auto">
+            <VoiceChat 
+              sessionId={sessionId}
+              onError={(error) => console.error('Voice chat error:', error)}
+            />
+          </div>
         </div>
       </div>
     </div>
