@@ -8,7 +8,8 @@ const envSchema = z.object({
     OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
     QDRANT_URL: z.string().min(1, 'QDRANT_URL is required'),
     QDRANT_COLLECTION_NAME: z.string().min(1, 'QDRANT_COLLECTION_NAME is required'), // Changed from ID to NAME
-    QDRANT_API_KEY: z.string().min(1, 'QDRANT_API_KEY is required')
+    QDRANT_API_KEY: z.string().min(1, 'QDRANT_API_KEY is required'),
+    GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1, 'GOOGLE_APPLICATION_CREDENTIALS is required')
 });
 
 // Function to validate environment variables
@@ -18,7 +19,8 @@ const validateEnv = () => {
             OPENAI_API_KEY: process.env.OPENAI_API_KEY,
             QDRANT_URL: process.env.QDRANT_URL,
             QDRANT_COLLECTION_NAME: process.env.QDRANT_COLLECTION_NAME, // Changed from ID to NAME
-            QDRANT_API_KEY: process.env.QDRANT_API_KEY
+            QDRANT_API_KEY: process.env.QDRANT_API_KEY,
+            GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS
         };
         const parsed = envSchema.parse(env);
 

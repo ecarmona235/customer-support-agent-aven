@@ -59,6 +59,11 @@ app.prepare().then(() => {
         console.log(`Received message from ${sessionId}:`, message.type);
 
         switch (message.type) {
+          case 'session_init':
+            // Handle session initialization
+            await handleSessionInit(sessionId, message);
+            break;
+          
           case 'audio_data':
             // Handle incoming audio data
             await handleAudioData(sessionId, message.data);
@@ -180,6 +185,30 @@ async function handleStopStreaming(sessionId) {
     ws.send(JSON.stringify({
       type: 'error',
       error: 'Failed to stop streaming',
+      timestamp: Date.now()
+    }));
+  }
+}
+
+// Session initialization handler
+async function handleSessionInit(sessionId, message) {
+  const ws = connections.get(sessionId);
+  if (!ws) return;
+
+  try {
+    console.log(`Session initialized: ${sessionId}`);
+    
+    // Send connection established confirmation
+    ws.send(JSON.stringify({
+      type: 'connection_established',
+      sessionId,
+      timestamp: Date.now()
+    }));
+  } catch (error) {
+    console.error('Error initializing session:', error);
+    ws.send(JSON.stringify({
+      type: 'error',
+      error: 'Failed to initialize session',
       timestamp: Date.now()
     }));
   }

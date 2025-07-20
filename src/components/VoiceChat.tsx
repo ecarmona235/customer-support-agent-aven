@@ -217,8 +217,8 @@ export default function VoiceChat({ sessionId, onError }: VoiceChatProps) {
   };
 
   return (
-    <div className="p-4 border rounded-lg bg-white shadow-sm">
-      <h3 className="text-lg font-semibold mb-4">Voice Chat</h3>
+    <div className="p-4 border border-gray-600 rounded-lg bg-gray-700 shadow-sm">
+      <h3 className="text-lg font-semibold mb-4 text-white">Voice Chat</h3>
       
       {/* Connection Status */}
       <div className="mb-4">
@@ -228,20 +228,16 @@ export default function VoiceChat({ sessionId, onError }: VoiceChatProps) {
               !isVoiceEnabled ? 'bg-gray-400' : isConnected ? 'bg-green-500' : 'bg-red-500'
             }`}
           />
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-300">
             {!isVoiceEnabled ? 'Voice Call Disabled' : getConnectionStatusText()}
           </span>
         </div>
-        
-        {sessionId && (
-          <p className="text-xs text-gray-500">Session: {sessionId}</p>
-        )}
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="mb-4 p-3 bg-red-900/20 border border-red-500 rounded-md">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
@@ -281,24 +277,24 @@ export default function VoiceChat({ sessionId, onError }: VoiceChatProps) {
 
         {/* Recording Indicator */}
         {isRecording && (
-          <div className="flex items-center justify-center gap-2 p-2 bg-red-50 border border-red-200 rounded-md">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-sm text-red-600">Recording...</span>
+          <div className="flex items-center justify-center gap-2 p-2 bg-red-900/20 border border-red-500 rounded-md">
+            <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
+            <span className="text-sm text-red-400">Recording...</span>
           </div>
         )}
 
         {/* Streaming Status */}
         {isStreaming && !isRecording && (
-          <div className="flex items-center justify-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            <span className="text-sm text-blue-600">Starting voice chat...</span>
+          <div className="flex items-center justify-center gap-2 p-2 bg-blue-900/20 border border-blue-500 rounded-md">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+            <span className="text-sm text-blue-400">Starting voice chat...</span>
           </div>
         )}
       </div>
 
       {/* Instructions */}
-      <div className="mt-4 p-3 bg-gray-50 rounded-md">
-        <p className="text-xs text-gray-600">
+      <div className="mt-4 p-3 bg-gray-600/20 border border-gray-500 rounded-md">
+        <p className="text-xs text-gray-300">
           {!isVoiceEnabled 
             ? 'Click "Start Voice Call" to enable voice chat functionality. This will connect to the voice server and request microphone access.'
             : 'Click "Start Voice Chat" to begin speaking. Your voice will be sent to the AI assistant in real-time.'
